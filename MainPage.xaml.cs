@@ -11,9 +11,11 @@ namespace Blinky
 {
     public sealed partial class MainPage : Page
     {
-        private const int LED_PIN = 2;
-        private GpioPin pin;
-        private GpioPinValue pinValue;
+        private const int PIR_PIN = 5;
+        private const int LED_PIN = 6;
+        private GpioPin pirInput;
+        private GpioPin ledOutput;
+
         private DispatcherTimer timer;
         private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
         private SolidColorBrush grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
@@ -26,10 +28,25 @@ namespace Blinky
             timer.Interval = TimeSpan.FromMilliseconds(500);
             timer.Tick += Timer_Tick;
             InitGPIO();
-            if (pin != null)
+            if (pirInput != null)
             {
                 timer.Start();
-            }        
+            }
+     
+        }
+
+        private void PirInput_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs args)
+        {
+            if (args.Edge == GpioPinEdge.RisingEdge)
+            {
+                LED.Fill = redBrush;
+                ledOutput.Write(GpioPinValue.High);
+            }
+            else
+            {
+                LED.Fill = grayBrush;
+                ledOutput.Write(GpioPinValue.Low);
+            }
         }
 
         private void InitGPIO()
@@ -39,15 +56,18 @@ namespace Blinky
             // Show an error if there is no GPIO controller
             if (gpio == null)
             {
-                pin = null;
+                pirInput = null;
                 GpioStatus.Text = "There is no GPIO controller on this device.";
                 return;
             }
 
-            pin = gpio.OpenPin(LED_PIN);
-            pinValue = GpioPinValue.High;
-            pin.Write(pinValue);
-            pin.SetDriveMode(GpioPinDriveMode.Output);
+            pirInput = gpio.OpenPin(PIR_PIN);
+            pirInput.SetDriveMode(GpioPinDriveMode.Input);
+            pirInput.ValueChanged += PirInput_ValueChanged;
+
+            ledOutput = gpio.OpenPin(LED_PIN);
+            ledOutput.SetDriveMode(GpioPinDriveMode.Output);
+            ledOutput.Write(GpioPinValue.Low);
 
             GpioStatus.Text = "GPIO pin initialized correctly.";
 
@@ -60,18 +80,7 @@ namespace Blinky
 
         private void Timer_Tick(object sender, object e)
         {
-            if (pinValue == GpioPinValue.High)
-            {
-                pinValue = GpioPinValue.Low;
-                pin.Write(pinValue);
-                LED.Fill = redBrush;
-            }
-            else
-            {
-                pinValue = GpioPinValue.High;
-                pin.Write(pinValue);
-                LED.Fill = grayBrush;
-            }
+            //TODO ...
         }
              
 
