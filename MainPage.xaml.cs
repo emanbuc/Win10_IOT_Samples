@@ -15,6 +15,7 @@ namespace Blinky
         private const int LED_PIN = 6;
         private GpioPin pirInput;
         private GpioPin ledOutput;
+        private Boolean movementDetected = false;
 
         private DispatcherTimer timer;
         private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
@@ -39,12 +40,12 @@ namespace Blinky
         {
             if (args.Edge == GpioPinEdge.RisingEdge)
             {
-                LED.Fill = redBrush;
+                movementDetected = true;
                 ledOutput.Write(GpioPinValue.High);
             }
             else
             {
-                LED.Fill = grayBrush;
+                movementDetected = false;
                 ledOutput.Write(GpioPinValue.Low);
             }
         }
@@ -80,7 +81,14 @@ namespace Blinky
 
         private void Timer_Tick(object sender, object e)
         {
-            //TODO ...
+            if (movementDetected)
+            {
+                LED.Fill = redBrush;
+            }
+            else
+            {
+                LED.Fill = grayBrush;
+            }
         }
              
 
