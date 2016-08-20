@@ -33,7 +33,7 @@ namespace Blinky
         private DispatcherTimer timer1;
 
         //GUI
-        private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.White);
+        private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
         private SolidColorBrush grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
 
         public MainPage()
