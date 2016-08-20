@@ -15,22 +15,25 @@ namespace Blinky
         //GPIO
         private const int PIR_PIN = 5;
         private const int LED_PIN = 6;
-        private const int SWITCH_PIN = 13;
+        private const int DOOR_SWITCH_PIN = 13;
+        private const int RESET_BTN_PIN = 26;
 
         private GpioPin pirInput;
         private GpioPin ledOutput;
         private GpioPin switchInput;
+        private GpioPin resetBtnInput;
 
         //Application STATUS
-        private Boolean movementDetected = false;
+        private Boolean pirSensorActive = false;
         private Boolean doorOpen = false;
+        private uint pirEventCounter = 0;
 
         //Timers
         private const int TIMER1_INTERVALL = 500;
         private DispatcherTimer timer1;
 
         //GUI
-        private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
+        private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.White);
         private SolidColorBrush grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
 
         public MainPage()
@@ -54,16 +57,17 @@ namespace Blinky
         /// <param name="args">Event Args</param>
         private void PirInput_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs args)
         {
-
+            
             //Update state
             if (args.Edge == GpioPinEdge.RisingEdge)
             {
-                movementDetected = true;
+                pirSensorActive = true;
                 ledOutput.Write(GpioPinValue.High);
+                pirEventCounter++;
             }
             else
             {
-                movementDetected = false;
+                pirSensorActive = false;
                 ledOutput.Write(GpioPinValue.Low);
             }
 
@@ -71,6 +75,7 @@ namespace Blinky
             var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 UpdatePirGui();
+                UpdateEventCounterGui();
             });
 
         }
@@ -95,7 +100,7 @@ namespace Blinky
         /// </summary>
         private void UpdatePirGui()
         {
-            if (movementDetected)
+            if (pirSensorActive)
             {
                 PirStatus.Fill = redBrush;
             }
@@ -124,15 +129,20 @@ namespace Blinky
             pirInput.SetDriveMode(GpioPinDriveMode.Input);
             pirInput.ValueChanged += PirInput_ValueChanged;
 
-            switchInput = gpio.OpenPin(SWITCH_PIN);
+            switchInput = gpio.OpenPin(DOOR_SWITCH_PIN);
             switchInput.SetDriveMode(GpioPinDriveMode.InputPullUp);
-            
+
+            resetBtnInput = gpio.OpenPin(RESET_BTN_PIN);
+            resetBtnInput.SetDriveMode(GpioPinDriveMode.InputPullUp);
 
             ledOutput = gpio.OpenPin(LED_PIN);
             ledOutput.SetDriveMode(GpioPinDriveMode.Output);
             ledOutput.Write(GpioPinValue.Low);
 
             GpioStatus.Text = "GPIO pin initialized correctly.";
+            UpdateEventCounterGui();
+            UpdateDoorGui();
+            UpdatePirGui();
 
         }
 
@@ -158,7 +168,19 @@ namespace Blinky
             {
                 UpdateDoorGui();
             });
+
+            GpioPinValue resetBtnPinValue = resetBtnInput.Read();
+            if (resetBtnPinValue== GpioPinValue.Low)
+            {
+                //reset event counter
+                pirEventCounter = 0;
+                UpdateEventCounterGui();
+            }
         }
 
+        private void UpdateEventCounterGui()
+        {
+            PirCouterText.Text = String.Format("Pir event since reset: {0}", pirEventCounter);
+        }
     }
 }
