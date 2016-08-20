@@ -11,13 +11,21 @@ namespace Blinky
 {
     public sealed partial class MainPage : Page
     {
+        //GPIO
         private const int PIR_PIN = 5;
         private const int LED_PIN = 6;
+
         private GpioPin pirInput;
         private GpioPin ledOutput;
+
+        //Application STATUS
         private Boolean movementDetected = false;
 
-        private DispatcherTimer timer;
+        //Timers
+        private const int TIMER1_INTERVALL = 500;
+        private DispatcherTimer timer1;
+
+        //GUI
         private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
         private SolidColorBrush grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
 
@@ -25,17 +33,21 @@ namespace Blinky
         {
             InitializeComponent();
 
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(500);
-            timer.Tick += Timer_Tick;
             InitGPIO();
-            if (pirInput != null)
-            {
-                timer.Start();
-            }
-     
+
+            //Main application timer
+            //used for periodic task like update GUI
+            timer1 = new DispatcherTimer();
+            timer1.Interval = TimeSpan.FromMilliseconds(TIMER1_INTERVALL);
+            timer1.Tick += Timer_Tick;
+            timer1.Start();            
         }
 
+        /// <summary>
+        /// PIR Input Value change event handler
+        /// </summary>
+        /// <param name="sender">GPIO pin</param>
+        /// <param name="args">Event Args</param>
         private void PirInput_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs args)
         {
             if (args.Edge == GpioPinEdge.RisingEdge)
@@ -50,6 +62,24 @@ namespace Blinky
             }
         }
 
+        /// <summary>
+        /// Read internal state and update GUI
+        /// </summary>
+        private void UpdateGui()
+        {
+            if (movementDetected)
+            {
+                LED.Fill = redBrush;
+            }
+            else
+            {
+                LED.Fill = grayBrush;
+            }
+        }
+
+        /// <summary>
+        /// Init GPIO pin in Input/Opuput mode
+        /// </summary>
         private void InitGPIO()
         {
             var gpio = GpioController.GetDefault();
@@ -81,14 +111,7 @@ namespace Blinky
 
         private void Timer_Tick(object sender, object e)
         {
-            if (movementDetected)
-            {
-                LED.Fill = redBrush;
-            }
-            else
-            {
-                LED.Fill = grayBrush;
-            }
+            UpdateGui();
         }
              
 
