@@ -2,6 +2,7 @@
 
 using System;
 using Windows.Devices.Gpio;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -14,12 +15,15 @@ namespace Blinky
         //GPIO
         private const int PIR_PIN = 5;
         private const int LED_PIN = 6;
+        private const int SWITCH_PIN = 13;
 
         private GpioPin pirInput;
         private GpioPin ledOutput;
+        private GpioPin switchInput;
 
         //Application STATUS
         private Boolean movementDetected = false;
+        private Boolean doorOpen = false;
 
         //Timers
         private const int TIMER1_INTERVALL = 500;
@@ -35,11 +39,11 @@ namespace Blinky
 
             InitGPIO();
 
-            //Main application timer
-            //used for periodic task like update GUI
+            //application timer
+            //used for periodic task like check an input values
             timer1 = new DispatcherTimer();
             timer1.Interval = TimeSpan.FromMilliseconds(TIMER1_INTERVALL);
-            timer1.Tick += Timer_Tick;
+            timer1.Tick += Timer1_Tick;
             timer1.Start();            
         }
 
@@ -50,6 +54,8 @@ namespace Blinky
         /// <param name="args">Event Args</param>
         private void PirInput_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs args)
         {
+
+            //Update state
             if (args.Edge == GpioPinEdge.RisingEdge)
             {
                 movementDetected = true;
@@ -60,20 +66,42 @@ namespace Blinky
                 movementDetected = false;
                 ledOutput.Write(GpioPinValue.Low);
             }
+
+            // Report the change to the GUI (async)
+            var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                UpdatePirGui();
+            });
+
+        }
+
+        /// <summary>
+        /// Update Door GUI based on aplication status
+        /// </summary>
+        private void UpdateDoorGui()
+        {
+            if (doorOpen)
+            {
+                DoorStatus.Text = "Door OPEN";
+            }
+            else
+            {
+                DoorStatus.Text = "Door CLOSED";
+            }
         }
 
         /// <summary>
         /// Read internal state and update GUI
         /// </summary>
-        private void UpdateGui()
+        private void UpdatePirGui()
         {
             if (movementDetected)
             {
-                LED.Fill = redBrush;
+                PirStatus.Fill = redBrush;
             }
             else
             {
-                LED.Fill = grayBrush;
+                PirStatus.Fill = grayBrush;
             }
         }
 
@@ -96,6 +124,10 @@ namespace Blinky
             pirInput.SetDriveMode(GpioPinDriveMode.Input);
             pirInput.ValueChanged += PirInput_ValueChanged;
 
+            switchInput = gpio.OpenPin(SWITCH_PIN);
+            switchInput.SetDriveMode(GpioPinDriveMode.InputPullUp);
+            
+
             ledOutput = gpio.OpenPin(LED_PIN);
             ledOutput.SetDriveMode(GpioPinDriveMode.Output);
             ledOutput.Write(GpioPinValue.Low);
@@ -109,11 +141,24 @@ namespace Blinky
 
 
 
-        private void Timer_Tick(object sender, object e)
+        private void Timer1_Tick(object sender, object e)
         {
-            UpdateGui();
+            GpioPinValue switchPinValue = switchInput.Read();
+            if(switchPinValue == GpioPinValue.High)
+            {
+                doorOpen = true;
+            }
+            else
+            {
+                doorOpen = false;
+            }
+
+            // Report the change to the GUI (async)
+            var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                UpdateDoorGui();
+            });
         }
-             
 
     }
 }
